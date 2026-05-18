@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Workback Schedule</title>
+<style>
+  :root {
+    --bg: #f6f8fa;
+    --panel: #ffffff;
+    --panel-2: #f0f3f6;
+    --border: #d0d7de;
+    --text: #1f2328;
+    --muted: #57606a;
+    --accent: #0969da;
+    --on-track: #1a7f37;
+    --at-risk: #9a6700;
+    --off-track: #cf222e;
+    --overdue: #cf222e;
+    --blocked: #8250df;
+    --done: #8c959f;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 14px;
+    line-height: 1.45;
+  }
+  header {
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--border);
+    background: var(--panel);
+  }
+  h1 {
+    margin: 0 0 4px 0;
+    font-size: 20px;
+    font-weight: 600;
+  }
+  .meta {
+    color: var(--muted);
+    font-size: 13px;
+  }
+  .summary {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    padding: 14px 24px;
+    background: var(--panel-2);
+    border-bottom: 1px solid var(--border);
+  }
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 500;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    cursor: pointer;
+    user-select: none;
+  }
+  .pill .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--muted);
+  }
+  .pill[data-signal="on-track"] .dot { background: var(--on-track); }
+  .pill[data-signal="at-risk"] .dot { background: var(--at-risk); }
+  .pill[data-signal="off-track"] .dot { background: var(--off-track); }
+  .pill[data-signal="overdue"] .dot { background: var(--overdue); }
+  .pill[data-signal="blocked"] .dot { background: var(--blocked); }
+  .pill[data-signal="done"] .dot { background: var(--done); }
+  .pill.active {
+    background: var(--accent);
+    color: white;
+    border-color: var(--accent);
+  }
+  .pill.active .dot { background: white; }
+  main {
+    padding: 20px 24px;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  th, td {
+    padding: 8px 10px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+  }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr.row-done td {
+    color: var(--muted);
+    background: var(--panel-2);
+  }
+  tbody tr.row-done td:nth-child(6) {
+    text-decoration: line-through;
+  }
+  td.notes-cell {
+    max-width: 320px;
+    color: var(--muted);
+    font-size: 12px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  td.notes-cell .note-count {
+    color: var(--accent);
+    font-weight: 600;
+    margin-left: 4px;
+  }
+  tbody tr.today-row td {
+    padding: 0;
+    border-bottom: none;
+    background: transparent;
+  }
+  .today-bar {
+    background: var(--accent);
+    color: white;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 5px 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .today-bar::before {
+    content: "";
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: white;
+  }
+  th {
+    color: var(--muted);
+    font-weight: 500;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    cursor: pointer;
+    user-select: none;
+    background: var(--panel-2);
+  }
+  th .sort-indicator {
+    color: var(--accent);
+    margin-left: 4px;
+  }
+  td.signal-cell {
+    text-align: center;
+  }
+  .signal-pill {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 500;
+    text-transform: lowercase;
+  }
+  .signal-pill[data-signal="on-track"] { background: rgba(26, 127, 55, 0.12); color: var(--on-track); }
+  .signal-pill[data-signal="at-risk"] { background: rgba(154, 103, 0, 0.14); color: var(--at-risk); }
+  .signal-pill[data-signal="off-track"] { background: rgba(207, 34, 46, 0.12); color: var(--off-track); }
+  .signal-pill[data-signal="overdue"] { background: rgba(207, 34, 46, 0.20); color: var(--overdue); font-weight: 700; }
+  .signal-pill[data-signal="blocked"] { background: rgba(130, 80, 223, 0.14); color: var(--blocked); }
+  .signal-pill[data-signal="done"] { background: rgba(140, 149, 159, 0.18); color: var(--done); text-decoration: line-through; }
+  .slip-pos { color: var(--off-track); }
+  .slip-neg { color: var(--on-track); }
+  .slip-zero { color: var(--muted); }
+  .empty {
+    padding: 40px;
+    text-align: center;
+    color: var(--muted);
+  }
+  @media print {
+    body { background: white; color: black; }
+    .summary { display: none; }
+  }
+</style>
+</head>
+<body>
+<script id="workback-data" type="application/json">{{DATA}}</script>
+
+<header>
+  <h1 id="event-name"></h1>
+  <div class="meta" id="event-meta"></div>
+</header>
+
+<div class="summary" id="summary"></div>
+
+<main>
+  <table id="table">
+    <thead>
+      <tr>
+        <th data-sort="t_offset">T-offset</th>
+        <th data-sort="target">Target</th>
+        <th data-sort="projected">Projected</th>
+        <th data-sort="slip_days">Slip</th>
+        <th data-sort="signal">Status</th>
+        <th data-sort="name">Task</th>
+        <th data-sort="owner">Owner</th>
+        <th class="no-sort">Notes</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</main>
+
+<script>
+(function() {
+  const raw = document.getElementById('workback-data').textContent;
+  let data;
+  try { data = JSON.parse(raw); }
+  catch (e) {
+    document.body.innerHTML = '<div class="empty">Could not parse workback data. Regenerate the HTML view.</div>';
+    return;
+  }
+
+  const event = data.event;
+  const tasks = data.tasks || [];
+  const extraColumns = data.extra_columns || [];
+
+  document.title = (event.name || 'Workback Schedule') + ' — workback';
+  document.getElementById('event-name').textContent = event.name || 'Workback Schedule';
+  const daysOut = event.days_remaining;
+  const daysLabel = daysOut == null ? '' : (daysOut < 0
+    ? ` (${Math.abs(daysOut)} days past event)`
+    : ` (${daysOut} days out)`);
+  document.getElementById('event-meta').textContent =
+    [event.date, event.type, event.location, event.owner ? 'owner: ' + event.owner : null]
+      .filter(Boolean).join(' · ') + daysLabel;
+
+  // Summary pills with filter
+  const signals = ['overdue', 'off-track', 'at-risk', 'blocked', 'on-track', 'done'];
+  const counts = {};
+  for (const s of signals) counts[s] = 0;
+  for (const t of tasks) counts[t.signal] = (counts[t.signal] || 0) + 1;
+  const summary = document.getElementById('summary');
+  const activeFilters = new Set();
+  summary.innerHTML = '';
+  const allPill = document.createElement('span');
+  allPill.className = 'pill active';
+  allPill.textContent = `All (${tasks.length})`;
+  allPill.addEventListener('click', () => { activeFilters.clear(); render(); });
+  summary.appendChild(allPill);
+  for (const s of signals) {
+    const pill = document.createElement('span');
+    pill.className = 'pill';
+    pill.dataset.signal = s;
+    pill.innerHTML = `<span class="dot"></span>${s} (${counts[s] || 0})`;
+    pill.addEventListener('click', () => {
+      if (activeFilters.has(s)) activeFilters.delete(s); else activeFilters.add(s);
+      render();
+    });
+    summary.appendChild(pill);
+  }
+
+  // Default sort: target date ascending
+  let sortKey = 'target';
+  let sortDir = 1;
+  document.querySelectorAll('th').forEach(th => {
+    if (!th.dataset.sort) { th.style.cursor = 'default'; return; }
+    th.addEventListener('click', () => {
+      const key = th.dataset.sort;
+      if (sortKey === key) sortDir = -sortDir; else { sortKey = key; sortDir = 1; }
+      render();
+    });
+  });
+
+  function filteredTasks() {
+    if (activeFilters.size === 0) return tasks.slice();
+    return tasks.filter(t => activeFilters.has(t.signal));
+  }
+
+  function sortedTasks() {
+    const arr = filteredTasks();
+    arr.sort((a, b) => {
+      let av = a[sortKey], bv = b[sortKey];
+      if (av == null) av = '';
+      if (bv == null) bv = '';
+      if (av < bv) return -1 * sortDir;
+      if (av > bv) return 1 * sortDir;
+      return 0;
+    });
+    return arr;
+  }
+
+  function renderSummaryActive() {
+    const pills = summary.querySelectorAll('.pill');
+    pills[0].classList.toggle('active', activeFilters.size === 0);
+    for (let i = 1; i < pills.length; i++) {
+      const s = pills[i].dataset.signal;
+      pills[i].classList.toggle('active', activeFilters.has(s));
+    }
+  }
+
+  function renderSortIndicators() {
+    document.querySelectorAll('th').forEach(th => {
+      const existing = th.querySelector('.sort-indicator');
+      if (existing) existing.remove();
+      if (th.dataset.sort === sortKey) {
+        const ind = document.createElement('span');
+        ind.className = 'sort-indicator';
+        ind.textContent = sortDir > 0 ? '↑' : '↓';
+        th.appendChild(ind);
+      }
+    });
+  }
+
+  function renderTable() {
+    const tbody = document.querySelector('#table tbody');
+    const thead = document.querySelector('#table thead tr');
+    if (extraColumns.length && thead.children.length === 8) {
+      for (const col of extraColumns) {
+        const th = document.createElement('th');
+        th.dataset.sort = 'extras.' + col;
+        th.textContent = col;
+        th.addEventListener('click', () => {
+          const key = th.dataset.sort;
+          if (sortKey === key) sortDir = -sortDir; else { sortKey = key; sortDir = 1; }
+          render();
+        });
+        thead.appendChild(th);
+      }
+    }
+    tbody.innerHTML = '';
+    const visible = sortedTasks();
+    const todayIdx = todayInsertIndex(visible);
+    const totalCols = 8 + extraColumns.length;
+    if (visible.length === 0) {
+      const tr = document.createElement('tr');
+      const td = document.createElement('td');
+      td.colSpan = 7 + extraColumns.length;
+      td.className = 'empty';
+      td.textContent = 'No tasks match the current filter.';
+      tr.appendChild(td);
+      tbody.appendChild(tr);
+      return;
+    }
+    for (let i = 0; i < visible.length; i++) {
+      if (i === todayIdx) tbody.appendChild(buildTodayRow(totalCols));
+      const t = visible[i];
+      const tr = document.createElement('tr');
+      if (t.done) tr.className = 'row-done';
+      const slip = t.slip_days || 0;
+      const slipCls = slip > 0 ? 'slip-pos' : slip < 0 ? 'slip-neg' : 'slip-zero';
+      const slipText = slip > 0 ? `+${slip}d` : slip < 0 ? `${slip}d` : '0';
+      const projOrActual = t.done ? (t.actual || '—') : (t.projected || '—');
+      const log = Array.isArray(t.log) ? t.log : [];
+      const latest = log.length ? log[log.length - 1] : null;
+      const latestText = latest ? (latest.note || '') : '';
+      const noteTitle = log.length
+        ? log.map(l => `${l.date || ''}: ${l.note || ''}`).join('\n')
+        : '';
+      const countBadge = log.length > 1 ? `<span class="note-count">(${log.length})</span>` : '';
+      tr.innerHTML = `
+        <td>T-${t.t_offset}</td>
+        <td>${escapeHtml(t.target || '')}</td>
+        <td>${escapeHtml(projOrActual)}</td>
+        <td class="${slipCls}">${slipText}</td>
+        <td class="signal-cell"><span class="signal-pill" data-signal="${t.signal}">${t.signal}</span></td>
+        <td>${escapeHtml(t.name)}</td>
+        <td>${escapeHtml(t.owner || '')}</td>
+        <td class="notes-cell" title="${escapeAttr(noteTitle)}">${escapeHtml(latestText)}${countBadge}</td>
+      `;
+      for (const col of extraColumns) {
+        const td = document.createElement('td');
+        const v = t.extras && t.extras[col];
+        if (v && typeof v === 'string' && /^(https?:\/\/|assets\/)/.test(v)) {
+          td.innerHTML = `<a href="${escapeAttr(v)}" target="_blank" rel="noopener">${escapeHtml(v)}</a>`;
+        } else {
+          td.textContent = v == null ? '' : String(v);
+        }
+        tr.appendChild(td);
+      }
+      tbody.appendChild(tr);
+    }
+    if (todayIdx === visible.length) tbody.appendChild(buildTodayRow(totalCols));
+  }
+
+  function todayInsertIndex(visible) {
+    if (sortKey !== 'target' && sortKey !== 'projected') return -1;
+    const today = event.today;
+    if (!today || visible.length === 0) return -1;
+    for (let i = 0; i < visible.length; i++) {
+      const t = visible[i];
+      const v = sortKey === 'projected'
+        ? (t.done ? t.actual : t.projected)
+        : t.target;
+      if (!v) continue;
+      if (sortDir > 0 ? v >= today : v <= today) return i;
+    }
+    return visible.length;
+  }
+
+  function buildTodayRow(colspan) {
+    const tr = document.createElement('tr');
+    tr.className = 'today-row';
+    const td = document.createElement('td');
+    td.colSpan = colspan;
+    const bar = document.createElement('div');
+    bar.className = 'today-bar';
+    bar.textContent = 'Today · ' + (event.today || '');
+    td.appendChild(bar);
+    tr.appendChild(td);
+    return tr;
+  }
+
+  function render() {
+    renderSummaryActive();
+    renderSortIndicators();
+    renderTable();
+  }
+
+  function escapeHtml(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+  function escapeAttr(s) { return escapeHtml(s); }
+
+  render();
+})();
+</script>
+</body>
+</html>
