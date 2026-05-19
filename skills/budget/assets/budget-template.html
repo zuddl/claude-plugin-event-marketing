@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Event Budget</title>
+<style>
+  :root {
+    --bg: #f6f8fa;
+    --panel: #ffffff;
+    --panel-2: #f0f3f6;
+    --border: #d0d7de;
+    --text: #1f2328;
+    --muted: #57606a;
+    --accent: #0969da;
+    --header-bg: #1d3b53;
+    --header-fg: #ffffff;
+    --cat-bg: #e6efe9;
+    --cat-fg: #1f3a2e;
+    --col-projected: #6aa78a;
+    --col-actual: #d0d7de;
+    --col-variance: #b1b8c1;
+    --col-comments: #527c66;
+    --good: #1a7f37;
+    --warn: #9a6700;
+    --bad: #cf222e;
+    --done: #8c959f;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 14px;
+    line-height: 1.45;
+  }
+  header {
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--border);
+    background: var(--panel);
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 24px;
+    flex-wrap: wrap;
+  }
+  h1 {
+    margin: 0 0 4px 0;
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--header-bg);
+  }
+  .meta {
+    color: var(--muted);
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .meta-key { color: var(--muted); }
+  .meta-val { color: var(--text); font-weight: 600; }
+  .meta-sep { color: var(--border); }
+  .summary-card {
+    display: grid;
+    grid-template-columns: repeat(3, auto);
+    gap: 0;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    overflow: hidden;
+    background: var(--panel);
+  }
+  .summary-cell {
+    padding: 10px 18px;
+    text-align: right;
+    min-width: 130px;
+  }
+  .summary-cell + .summary-cell { border-left: 1px solid var(--border); }
+  .summary-cell .label {
+    display: block;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--header-fg);
+    padding: 4px 10px;
+    margin: -10px -18px 8px -18px;
+  }
+  .summary-cell.projected .label { background: var(--col-projected); }
+  .summary-cell.actual .label { background: var(--col-actual); color: var(--text); }
+  .summary-cell.variance .label { background: var(--col-variance); color: var(--text); }
+  .summary-cell .amount {
+    font-size: 18px;
+    font-weight: 700;
+  }
+  .summary-cell .amount.over { color: var(--bad); }
+  .summary-cell .amount.under { color: var(--good); }
+  main {
+    padding: 20px 24px;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+  }
+  thead th {
+    background: var(--header-bg);
+    color: var(--header-fg);
+    font-weight: 600;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 10px 12px;
+    text-align: left;
+    border-right: 1px solid rgba(255, 255, 255, 0.15);
+  }
+  thead th:last-child { border-right: none; }
+  thead th.col-projected { background: var(--col-projected); }
+  thead th.col-actual { background: var(--col-actual); color: var(--text); }
+  thead th.col-variance { background: var(--col-variance); color: var(--text); }
+  thead th.col-comments { background: var(--col-comments); }
+  thead th.num { text-align: right; }
+  td {
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+    border-right: 1px solid var(--border);
+    vertical-align: middle;
+  }
+  td:last-child { border-right: none; }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  tr.category-row td {
+    background: var(--cat-bg);
+    color: var(--cat-fg);
+    font-weight: 700;
+    border-top: 2px solid var(--header-bg);
+  }
+  tr.category-row td.subtotals-label {
+    text-align: right;
+    font-weight: 600;
+    font-style: italic;
+    color: var(--muted);
+    text-transform: lowercase;
+  }
+  tr.line-item-row td.expandable {
+    cursor: pointer;
+    user-select: none;
+  }
+  tr.line-item-row td.expandable .caret {
+    display: inline-block;
+    width: 12px;
+    color: var(--muted);
+    font-size: 10px;
+    transition: transform 0.15s ease;
+  }
+  tr.line-item-row.expanded td.expandable .caret {
+    transform: rotate(90deg);
+  }
+  tr.line-item-row td.no-invoices .caret {
+    visibility: hidden;
+  }
+  tr.invoice-row { display: none; }
+  tr.invoice-row.show { display: table-row; }
+  tr.invoice-row td {
+    background: var(--panel-2);
+    color: var(--muted);
+    font-size: 12px;
+    padding: 6px 12px 6px 32px;
+  }
+  tr.invoice-row td.invoice-vendor {
+    color: var(--text);
+    font-weight: 500;
+  }
+  tr.invoice-row td.num { color: var(--text); }
+  tr.invoice-row a {
+    color: var(--accent);
+    text-decoration: none;
+  }
+  tr.invoice-row a:hover { text-decoration: underline; }
+  .conf-pill {
+    display: inline-block;
+    padding: 1px 6px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .conf-pill[data-conf="high"] { background: rgba(26, 127, 55, 0.14); color: var(--good); }
+  .conf-pill[data-conf="medium"] { background: rgba(154, 103, 0, 0.16); color: var(--warn); }
+  .conf-pill[data-conf="low"] { background: rgba(207, 34, 46, 0.14); color: var(--bad); }
+  tfoot tr.total-row td {
+    background: var(--header-bg);
+    color: var(--header-fg);
+    font-weight: 700;
+    font-size: 14px;
+    border-top: 2px solid var(--header-bg);
+  }
+  tfoot tr.total-row td.num.over { background: var(--bad); }
+  tfoot tr.total-row td.num.under { color: #b6e3c4; }
+  .variance.over { color: var(--bad); font-weight: 600; }
+  .variance.under { color: var(--muted); }
+  .variance.zero { color: var(--muted); }
+  .empty {
+    padding: 40px;
+    text-align: center;
+    color: var(--muted);
+  }
+  .pct-bar {
+    display: inline-block;
+    width: 60px;
+    height: 6px;
+    background: var(--border);
+    border-radius: 999px;
+    overflow: hidden;
+    margin-left: 8px;
+    vertical-align: middle;
+  }
+  .pct-bar > span {
+    display: block;
+    height: 100%;
+    background: var(--col-projected);
+  }
+  .pct-bar.over > span { background: var(--bad); }
+  .pct-bar.warn > span { background: var(--warn); }
+  .comments-cell {
+    color: var(--muted);
+    font-size: 12px;
+    max-width: 280px;
+  }
+  @media print {
+    body { background: white; }
+    tr.invoice-row { display: table-row !important; }
+  }
+</style>
+</head>
+<body>
+<script id="budget-data" type="application/json">{{DATA}}</script>
+
+<header>
+  <div>
+    <h1 id="event-name"></h1>
+    <div class="meta" id="event-meta"></div>
+  </div>
+  <div class="summary-card" id="summary-card"></div>
+</header>
+
+<main>
+  <table id="budget-table">
+    <thead>
+      <tr>
+        <th>Category</th>
+        <th class="col-projected num">Projected Subtotal</th>
+        <th class="col-actual num">Actual Subtotal</th>
+        <th class="col-variance num">Variance</th>
+        <th class="col-comments">Comments</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+    <tfoot></tfoot>
+  </table>
+</main>
+
+<script>
+(function() {
+  const raw = document.getElementById('budget-data').textContent;
+  let data;
+  try { data = JSON.parse(raw); }
+  catch (e) {
+    document.body.innerHTML = '<div class="empty">Could not parse budget data. Regenerate the HTML view.</div>';
+    return;
+  }
+
+  const event = data.event || {};
+  const categories = data.categories || [];
+  const totals = data.totals || { projected: 0, actual: 0, variance: 0 };
+  const sym = event.currency_symbol || '$';
+
+  document.title = (event.name || 'Event Budget') + ' — budget';
+  document.getElementById('event-name').textContent = event.name || 'Event Budget';
+
+  const metaEl = document.getElementById('event-meta');
+  metaEl.innerHTML = '';
+  function metaItem(key, val) {
+    if (val == null || val === '') return;
+    const wrap = document.createElement('span');
+    const k = document.createElement('span'); k.className = 'meta-key'; k.textContent = key;
+    const v = document.createElement('span'); v.className = 'meta-val'; v.textContent = ' ' + val;
+    wrap.appendChild(k); wrap.appendChild(v);
+    if (metaEl.children.length > 0) {
+      const sep = document.createElement('span'); sep.className = 'meta-sep'; sep.textContent = '·';
+      metaEl.appendChild(sep);
+    }
+    metaEl.appendChild(wrap);
+  }
+  metaItem('Date', event.date);
+  metaItem('Location', event.location);
+  if (event.attendees != null) metaItem('Attendees', event.attendees);
+  if (event.owner) metaItem('Owner', event.owner);
+
+  // Summary card top-right
+  const summaryEl = document.getElementById('summary-card');
+  summaryEl.innerHTML = '';
+  summaryEl.appendChild(summaryCell('Projected Total', totals.projected, 'projected'));
+  summaryEl.appendChild(summaryCell('Actual Total', totals.actual, 'actual'));
+  summaryEl.appendChild(summaryCell('Variance', totals.variance, 'variance', true));
+
+  function summaryCell(label, amount, cls, isVariance) {
+    const cell = document.createElement('div');
+    cell.className = 'summary-cell ' + cls;
+    const lab = document.createElement('span');
+    lab.className = 'label';
+    lab.textContent = label;
+    cell.appendChild(lab);
+    const amt = document.createElement('span');
+    amt.className = 'amount';
+    if (isVariance) {
+      if (amount > 0) amt.classList.add('over');
+      else if (amount < 0) amt.classList.add('under');
+    }
+    amt.textContent = formatMoney(amount, sym);
+    cell.appendChild(amt);
+    return cell;
+  }
+
+  const tbody = document.querySelector('#budget-table tbody');
+  if (!categories.length) {
+    tbody.innerHTML = '<tr><td colspan="5" class="empty">No categories yet. Add some via the skill.</td></tr>';
+  } else {
+    for (const cat of categories) {
+      const subtotals = cat.subtotals || aggregate(cat.line_items || []);
+      const trCat = document.createElement('tr');
+      trCat.className = 'category-row';
+      trCat.innerHTML = `
+        <td>${escapeHtml(cat.name || '')}</td>
+        <td class="num">${formatMoney(subtotals.projected, sym)}</td>
+        <td class="num">${formatMoney(subtotals.actual, sym)}</td>
+        <td class="num variance ${varianceClass(subtotals.variance)}">${formatMoney(subtotals.variance, sym)}</td>
+        <td class="subtotals-label">Subtotals</td>
+      `;
+      tbody.appendChild(trCat);
+
+      for (const li of (cat.line_items || [])) {
+        const invoices = li.invoices || [];
+        const tr = document.createElement('tr');
+        tr.className = 'line-item-row';
+        const hasInvoices = invoices.length > 0;
+        const pct = li.projected > 0 ? Math.min(150, Math.round((li.actual / li.projected) * 100)) : (li.actual > 0 ? 150 : 0);
+        const pctCls = pct > 100 ? 'over' : pct >= 80 ? 'warn' : '';
+        tr.innerHTML = `
+          <td class="expandable ${hasInvoices ? '' : 'no-invoices'}">
+            <span class="caret">▶</span> ${escapeHtml(li.name || '')}
+          </td>
+          <td class="num">${formatMoney(li.projected, sym)}</td>
+          <td class="num">
+            ${formatMoney(li.actual, sym)}
+            ${li.projected > 0 ? `<span class="pct-bar ${pctCls}" title="${pct}% used"><span style="width:${Math.min(100, pct)}%"></span></span>` : ''}
+          </td>
+          <td class="num variance ${varianceClass(li.variance)}">${formatMoney(li.variance, sym)}</td>
+          <td class="comments-cell">${escapeHtml(li.comments || '')}</td>
+        `;
+        tbody.appendChild(tr);
+
+        for (const inv of invoices) {
+          const ir = document.createElement('tr');
+          ir.className = 'invoice-row';
+          const fileCell = inv.file
+            ? `<a href="${escapeAttr(inv.file)}" target="_blank" rel="noopener">${escapeHtml(invoiceShortFile(inv.file))}</a>`
+            : '<span style="color: var(--muted)">—</span>';
+          ir.innerHTML = `
+            <td>${escapeHtml(inv.date || '')} · <span class="invoice-vendor">${escapeHtml(inv.vendor || '')}</span></td>
+            <td class="num"></td>
+            <td class="num">${formatMoney(inv.amount, sym)}</td>
+            <td>${inv.confidence ? `<span class="conf-pill" data-conf="${escapeAttr(inv.confidence)}">${escapeHtml(inv.confidence)}</span>` : ''}</td>
+            <td class="comments-cell">${fileCell}${inv.note ? ' · ' + escapeHtml(inv.note) : ''}</td>
+          `;
+          tbody.appendChild(ir);
+        }
+
+        if (hasInvoices) {
+          const expandable = tr.querySelector('td.expandable');
+          expandable.addEventListener('click', () => {
+            tr.classList.toggle('expanded');
+            let next = tr.nextElementSibling;
+            while (next && next.classList.contains('invoice-row')) {
+              next.classList.toggle('show');
+              next = next.nextElementSibling;
+            }
+          });
+        }
+      }
+    }
+  }
+
+  const tfoot = document.querySelector('#budget-table tfoot');
+  const totVarCls = varianceClass(totals.variance);
+  tfoot.innerHTML = `
+    <tr class="total-row">
+      <td>Total</td>
+      <td class="num">${formatMoney(totals.projected, sym)}</td>
+      <td class="num">${formatMoney(totals.actual, sym)}</td>
+      <td class="num ${totVarCls}">${formatMoney(totals.variance, sym)}</td>
+      <td></td>
+    </tr>
+  `;
+
+  function aggregate(items) {
+    const out = { projected: 0, actual: 0, variance: 0 };
+    for (const li of items) {
+      out.projected += (li.projected || 0);
+      out.actual += (li.actual || 0);
+    }
+    out.variance = out.actual - out.projected;
+    return out;
+  }
+
+  function varianceClass(v) {
+    if (v == null) return 'zero';
+    if (v > 0) return 'over';
+    if (v < 0) return 'under';
+    return 'zero';
+  }
+
+  function formatMoney(n, sym) {
+    if (n == null || isNaN(n)) return sym + '0';
+    const abs = Math.abs(n);
+    const hasDecimal = Math.round(abs) !== abs;
+    const formatted = abs.toLocaleString('en-US', {
+      minimumFractionDigits: hasDecimal ? 2 : 0,
+      maximumFractionDigits: 2,
+    });
+    return (n < 0 ? '−' : '') + sym + formatted;
+  }
+
+  function invoiceShortFile(path) {
+    if (!path) return '';
+    const parts = path.split('/');
+    return parts[parts.length - 1];
+  }
+
+  function escapeHtml(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+  function escapeAttr(s) { return escapeHtml(s); }
+})();
+</script>
+</body>
+</html>

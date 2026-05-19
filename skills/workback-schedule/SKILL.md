@@ -34,6 +34,10 @@ Pick the operation that matches the user's intent:
 | "Move the target date for X" / "Rebaseline X" | `rebaseline` (always confirm) |
 | "Give me a report" / "Stakeholder summary" | `report` |
 | "Regenerate the HTML view" / "Refresh the view" | `view` |
+| "Sync to Asana / Monday / Notion / Linear" / "Connect to <system>" | `sync connect` |
+| "Push changes to Asana" / "Pull latest from Asana" / no-arg after sync is on | `sync` |
+| "Stop syncing" / "Disconnect from Asana" | `sync disconnect` |
+| "Switch source of truth to Asana" / "Asana is source of truth now" | `sync switch` |
 
 If the user invokes the skill without context, default to `status` when there is an active event, or `create` otherwise.
 
@@ -95,6 +99,17 @@ Apply the format in Step 4, write `workback.md`, then generate `workback.html` (
 
 Report the paths and a short summary: total tasks, count by status, next 5 upcoming, anything overdue.
 
+### 2e. Offer downstream sync (Asana / Monday / Notion / Linear / etc.)
+
+After the schedule is created and rendered, ask the user one question:
+
+> Do you want to mirror this workback into a downstream system like Asana, Monday, Notion, or Linear? You can also skip this and connect later — just invoke the skill again with "connect to <system>".
+
+- If **no** or **later** — say "OK, the schedule is local-only. Invoke me with `connect to <system>` any time to wire it up" and stop.
+- If **yes** — proceed to Step 11 (`sync connect`).
+
+Never block the local workback on downstream setup. The local files are always the immediate output; sync is additive.
+
 ## Step 3 — Parsing a user-provided sample
 
 Accept markdown task lists, markdown tables, CSV/TSV pastes, plain bullets, or a screenshot path.
@@ -129,19 +144,33 @@ collaborators: [sales-ops, ae-rachel]
 created: 2026-05-18
 status: in-progress
 extra_columns: [vendor, doc_link]
+sync:
+  enabled: true
+  system: asana
+  project_id: "1209876543210"
+  project_name: "CISO Dinner NYC — Prep"
+  source_of_truth: workback     # workback | downstream | bootstrap
+  bootstrapped: true             # only meaningful when source_of_truth was 'bootstrap'
+  last_sync: 2026-05-18T15:30:00Z
+  owner_map:                     # workback owner -> downstream user identifier
+    vedha: vedha@zuddl.com
+    sales-ops: ops@zuddl.com
+    ae-rachel: rachel@zuddl.com
 ---
 
 ## Tasks
 
-- [ ] T-60 | target: 2026-07-17 | projected: 2026-07-17 | on-track | Lock venue shortlist | vedha
-- [ ] T-45 | target: 2026-08-01 | projected: 2026-08-08 | at-risk | Send save-the-dates | sales-ops | vendor: SendGrid | doc_link: <url>
+- [ ] T-60 | target: 2026-07-17 | projected: 2026-07-17 | on-track | Lock venue shortlist | vedha | downstream_id: 1209876543211
+- [ ] T-45 | target: 2026-08-01 | projected: 2026-08-08 | at-risk | Send save-the-dates | sales-ops | vendor: SendGrid | doc_link: <url> | downstream_id: 1209876543212
   - 2026-07-28: legal still reviewing invite copy, vendor pushed by 1 wk
-- [x] T-30 | target: 2026-08-16 | actual: 2026-08-14 | done | Confirm final menu | vedha
+- [x] T-30 | target: 2026-08-16 | actual: 2026-08-14 | done | Confirm final menu | vedha | downstream_id: 1209876543213
 
 ## Notes
 
 <freeform log>
 ```
+
+The `sync` frontmatter block is absent when sync hasn't been set up. The `downstream_id` per-task extra appears only on tasks that exist in the downstream system.
 
 **Task line grammar:**
 
@@ -218,15 +247,34 @@ JSON payload shape:
       "owner": "vedha",
       "done": false,
       "blocked": false,
-      "slip_days": 0,
-      "log": [],
+      "log": [
+        { "date": "2026-05-20", "note": "vendor shortlisted, awaiting hold confirmation" }
+      ],
       "extras": { "vendor": null, "doc_link": null }
     }
   ]
 }
 ```
 
+Per-task fields the HTML uses:
+
+- `t_offset`, `target`, `projected`, `actual` — dates drive the columns.
+- `signal` — one of `on-track`, `at-risk`, `off-track`, `overdue`, `blocked`, `done`. Drives the status pill AND row tinting (at-risk = orange wash, off-track / overdue = red wash with overdue deeper).
+- `name`, `owner` — straightforward.
+- `done` — when true, the row is grayed out and the task name is struck through.
+- `log` — array of `{ date, note }`. The HTML renders the **latest** note in the Notes column (truncated with ellipsis) and shows the full log on hover. A `(N)` badge appears when there's more than one note.
+- `extras` — keys must match `extra_columns`. String values starting with `http(s)://` or `assets/` are auto-linkified.
+
 Write the result to `<event-folder>/workback.html`. After writing, tell the user the path and suggest `open <path>` on macOS to view it.
+
+Rendered HTML view characteristics (informational — the template handles this, not the skill):
+
+- Light-mode only. Sortable table sorted by **target** ascending by default.
+- Header highlights the **event date** in bold primary text and the **days remaining** as a blue pill (gray when past).
+- Filter pills above the table (All + one per signal). Clicking a pill toggles it; clicking "All" clears.
+- A blue "Today · YYYY-MM-DD" divider row is inserted in the body between the last task with `target <= today` and the first task with `target > today` — but only when the table is sorted by `target` or `projected`.
+- "Due in" column shows time until target as `today`, `N day(s)`, `N week(s)`, or `N week(s) M day(s)`. Past targets read `N days late` in red. Done tasks show `—`.
+- Notes column shows the latest log note inline, ellipsized; full log on hover.
 
 The HTML view is **read-only**. All edits go through the skill via chat. Do not add edit affordances to the HTML.
 
@@ -294,7 +342,108 @@ Never silently apply low-confidence changes. When in doubt, ask.
 - **`remove`** — Confirm before removing (especially if the task has a log history). Log the removal in `notes.md` with reason if the user offers one.
 - **`rebaseline`** — Show the user the old target, new target, slip from original, and ask to confirm. On confirm, update target, set projected = target, recompute signal, append log line marking the rebaseline.
 
-## Step 11 — Report (`report`)
+## Step 11 — Downstream sync
+
+The skill can mirror the workback into a project-management system the user already uses (Asana, Monday, Notion, Linear, ClickUp, etc.). Sync is **optional** and **additive** — the local `workback.md` and `workback.html` are always the immediate output. Sync just keeps a downstream project in lockstep with one or the other.
+
+### 11a. `sync connect`
+
+Triggered after `create` (Step 2e), OR any later time the user says "connect to <system>".
+
+1. **Pick the system** — ask which downstream system. Map to the corresponding MCP server name (e.g., asana → `mcp__asana__*`, notion → `mcp__notion__*`). If the user named a system the skill doesn't recognize, ask whether an MCP for it is connected and what its tool prefix is.
+
+2. **Check MCP availability** — try to list the available tools for that prefix (e.g., call a listing/metadata tool, or attempt a benign read like "list projects"). If the call fails because the MCP isn't connected:
+   - Tell the user the MCP isn't connected.
+   - Point them to `/mcp` (or the equivalent for their setup) to connect it.
+   - Stop. Don't write any `sync:` frontmatter. They can re-invoke `connect to <system>` later.
+
+3. **Find or create the downstream project**:
+   - Ask the user whether the workback should live in an **existing** project (give them a way to identify it — name, URL, or ID) or a **new** project.
+   - **Existing** → search the downstream system by the name/URL/ID provided. If multiple matches, list them and ask which. If none, fall through to "new."
+   - **New** → ask for a project name (default: the event name + " — Prep"). Create the project. Default project description = a short blurb naming the event and linking the workback file path.
+
+4. **Map owners to downstream users**:
+   - For each unique owner in the workback (`vedha`, `sales-ops`, etc.), ask the user for the matching downstream identifier (email or handle, whichever the MCP expects).
+   - If the user can't or won't map an owner, store it as `null` — tasks for that owner will be created unassigned and the skill will warn each time.
+   - Store the map in `sync.owner_map`.
+
+5. **Ask the source-of-truth question** (the most important step):
+
+   > Which side is the source of truth?
+   > 1. **Workback** — this skill is the source. Every change you make through me pushes to <system>. Updates made directly in <system> get overwritten on next sync.
+   > 2. **<System>** — <system> is the source. On each invocation I pull the latest from <system> first, reconcile, and update the local workback. My local edits get overwritten on next sync.
+   > 3. **Bootstrap then switch** — push the current workback to <system> once to seed the project, then <system> becomes the source. Common when the team works in <system> day-to-day but wants this skill to scaffold the initial plan.
+
+   Store the answer in `sync.source_of_truth`. For option 3 (bootstrap), also set `sync.bootstrapped: false` — it flips to `true` after the first successful push, at which point the effective source of truth becomes `downstream`.
+
+6. **Initial push** (workback → downstream): create one downstream task per workback task. For each created task, record the returned ID in the corresponding task line as `downstream_id: <id>`. Set:
+   - Task name = workback task name
+   - Due date = `target`
+   - Assignee = `sync.owner_map[owner]` (if mapped)
+   - Description = a short summary including the T-offset, projected date if different from target, and any extras
+   - Status / done = mirror the workback `done` boolean to whatever "completed" concept the system uses
+
+7. **Set sync state**:
+   - `sync.enabled: true`
+   - `sync.system`, `sync.project_id`, `sync.project_name`
+   - `sync.last_sync` = current ISO-8601 timestamp
+   - Append a note in `notes.md`: "Sync enabled with <system> project <name> (<id>) on <date>; source of truth: <mode>."
+
+8. **Regenerate `workback.html`** and confirm: "Synced N tasks to <system>. Source of truth: <mode>."
+
+### 11b. `sync` (push or pull, based on source of truth)
+
+Behavior depends on `sync.source_of_truth`:
+
+| Source of truth | What `sync` does |
+|---|---|
+| `workback` | **Push.** Diff the current workback against the last known downstream state (using `downstream_id` per task). Apply adds, removes, and field changes to the downstream project. Update `sync.last_sync`. |
+| `downstream` | **Pull.** Fetch all tasks from the downstream project. Reconcile against the workback. Show the user a diff (per task: added downstream, removed downstream, field changes). Confirm before applying to `workback.md`. |
+| `bootstrap` and `bootstrapped: false` | **Push** (as workback mode). On success, flip `bootstrapped: true` and start treating the effective SoT as `downstream` from now on. Tell the user: "Bootstrap complete. <System> is now the source of truth — I'll pull from there on next sync." |
+| `bootstrap` and `bootstrapped: true` | Same as `downstream`. |
+
+Push semantics:
+- Adds (workback has a task with no `downstream_id`) → create downstream, record ID.
+- Removes (downstream has a task whose ID is no longer in workback) → archive or delete in downstream. Confirm before deleting if the MCP supports archive instead.
+- Field changes — overwrite downstream fields with workback values.
+- Closed/done tasks — mark complete in downstream; don't delete.
+
+Pull semantics:
+- Adds (downstream has a task with no matching `downstream_id` in workback) → propose adding it to the workback. Ask the user for T-offset since downstream tasks won't have one. Ask whether owner can be mapped back to a workback owner.
+- Removes (workback has a task whose `downstream_id` no longer exists downstream) → ask: remove from workback, or treat as un-synced and clear `downstream_id`?
+- Field changes — propose overwriting workback fields. Show old → new per task. Confirm.
+
+Always recompute signals after a sync and regenerate `workback.html`.
+
+### 11c. Inline sync after every change
+
+If `sync.enabled` is true and the effective source of truth is `workback`, push the relevant delta to the downstream project after **every** local change (any `update`, `add`, `remove`, `rebaseline`, interpreted update, or catch-up apply). Failures here must not block the local change — log a warning in `notes.md` ("Sync push failed at <timestamp>: <reason>; will retry on next `sync`.") and keep going.
+
+If the effective source of truth is `downstream`, do **not** push local changes. Tell the user: "I've updated the local workback, but <system> is the source of truth — these edits will be overwritten on next sync unless you mirror them in <system> manually or run `sync switch` to flip the source."
+
+### 11d. `sync switch`
+
+Lets the user change `sync.source_of_truth` mid-flight. The common case: bootstrap mode auto-flips to downstream after first push, but sometimes the user wants to flip back (e.g., they're doing heavy local restructuring before re-handing off to the team). Confirm before flipping; warn about the risk of overwriting whichever side they're about to demote.
+
+### 11e. `sync disconnect`
+
+Set `sync.enabled: false`. Leave `downstream_id` on each task in case the user reconnects later. Tell the user: "Sync paused. The downstream project (<id>) is unchanged. Invoke `sync connect` to resume."
+
+### 11f. Conflict and failure handling
+
+- **MCP disconnects mid-session** — surface the error, set a soft flag in memory, fall back to local-only for the rest of the session.
+- **Owner mapping has no match** — task gets pushed unassigned; log a warning.
+- **Downstream rate limit / 5xx** — back off, retry once, then defer to next manual `sync`.
+- **Schema mismatch** (e.g., custom field doesn't exist) — degrade gracefully: skip that field, write a note in `notes.md`, suggest the user add the custom field in the downstream system if they want it tracked.
+
+### 11g. What sync never does
+
+- Sync the **budget skill's** `budget.md`. That's a separate skill with its own sync surface (or none).
+- Touch downstream projects outside the configured `sync.project_id`.
+- Sync without `sync.enabled: true`.
+- Overwrite a downstream value when the effective source of truth is `downstream` (pull-only direction).
+
+## Step 12 — Report (`report`)
 
 A compact, stakeholder-friendly markdown summary, suitable for pasting into a status update:
 

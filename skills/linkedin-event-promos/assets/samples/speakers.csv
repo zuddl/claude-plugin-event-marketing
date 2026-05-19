@@ -1,0 +1,4 @@
+name,title,company,headshot,session_title,linkedin_url
+Jane Doe,Chief Information Security Officer,Acme Financial,https://example.com/headshots/jane-doe.jpg,Building a Modern SOC at Scale,https://linkedin.com/in/janedoe
+Andre Martin,VP of Platform Engineering,Northwind Health,https://example.com/headshots/andre-martin.jpg,Zero Trust in Regulated Industries,https://linkedin.com/in/andremartin
+Priya Shah,Head of Detection & Response,Globex Energy,/Users/you/headshots/priya-shah.png,Threat-Informed Defense in Practice,https://linkedin.com/in/priyashah

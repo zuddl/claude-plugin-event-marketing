@@ -1,0 +1,126 @@
+/* All colors and fonts are CSS variables set by widget.tsx from config.brand.
+   Edit those values in src/config.ts, not here, so re-running the skill keeps
+   your branding intact. */
+
+.ec-root {
+  position: fixed;
+  z-index: 2147483600; /* sit above almost anything the host page might use */
+  font-family: var(--ec-font);
+  color: var(--ec-text);
+}
+
+.ec-root.ec-bottom-right { right: 20px; bottom: 20px; }
+.ec-root.ec-bottom-left  { left:  20px; bottom: 20px; }
+
+.ec-launcher {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--ec-primary);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 26px;
+  cursor: pointer;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.18);
+  border: none;
+  transition: transform 120ms ease, box-shadow 120ms ease;
+}
+.ec-launcher:hover { transform: scale(1.04); box-shadow: 0 8px 28px rgba(0, 0, 0, 0.22); }
+.ec-launcher:focus { outline: 3px solid var(--ec-accent); outline-offset: 2px; }
+.ec-launcher img { width: 28px; height: 28px; }
+
+.ec-panel {
+  position: absolute;
+  bottom: 72px;
+  width: 380px;
+  max-width: calc(100vw - 40px);
+  height: 560px;
+  max-height: calc(100vh - 100px);
+  background: var(--ec-bg);
+  border-radius: 14px;
+  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.22);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.ec-root.ec-bottom-right .ec-panel { right: 0; }
+.ec-root.ec-bottom-left  .ec-panel { left:  0; }
+
+.ec-header {
+  padding: 14px 16px;
+  background: var(--ec-primary);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+.ec-header img { width: 24px; height: 24px; border-radius: 4px; }
+.ec-header .ec-title { font-weight: 600; font-size: 15px; flex: 1; }
+.ec-header .ec-close {
+  background: transparent; border: 0; color: #fff; cursor: pointer; font-size: 20px; padding: 4px 8px;
+}
+.ec-header .ec-close:hover { opacity: 0.85; }
+
+.ec-thread-root { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+
+.ec-thread {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: var(--ec-bg);
+}
+
+.ec-msg { max-width: 85%; padding: 10px 12px; border-radius: 12px; line-height: 1.4; font-size: 14px; white-space: pre-wrap; word-wrap: break-word; }
+.ec-msg.user      { align-self: flex-end;   background: var(--ec-primary); color: #fff; border-bottom-right-radius: 4px; }
+.ec-msg.assistant { align-self: flex-start; background: #f3f4f6;          color: var(--ec-text); border-bottom-left-radius: 4px; }
+.ec-msg.assistant a { color: var(--ec-accent); }
+
+.ec-composer {
+  border-top: 1px solid #e5e7eb;
+  padding: 10px;
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+  background: var(--ec-bg);
+}
+.ec-composer-input {
+  flex: 1;
+  resize: none;
+  border: 1px solid #d1d5db;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-family: inherit;
+  font-size: 14px;
+  color: var(--ec-text);
+  background: #fff;
+  min-height: 40px;
+  max-height: 120px;
+}
+.ec-composer-input:focus { outline: 2px solid var(--ec-accent); outline-offset: 0; border-color: transparent; }
+
+.ec-composer-send {
+  background: var(--ec-primary);
+  color: #fff;
+  border: 0;
+  border-radius: 10px;
+  padding: 0 16px;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 14px;
+}
+.ec-composer-send:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.ec-footer {
+  font-size: 11px;
+  color: #6b7280;
+  text-align: center;
+  padding: 6px 8px;
+  border-top: 1px solid #f3f4f6;
+  background: var(--ec-bg);
+}

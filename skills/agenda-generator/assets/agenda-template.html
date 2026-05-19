@@ -1,0 +1,799 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Conference Agenda</title>
+<style>
+  :root {
+    --primary:      #2A5BD7;
+    --primary-text: #ffffff;
+    --accent:       #FFB547;
+    --bg:           #FAFAF7;
+    --panel:        #ffffff;
+    --text:         #111111;
+    --muted:        #666666;
+    --border:       #E5E5E5;
+    --great:        #0E7A35;
+    --good:         #9A6700;
+    --radius:       10px;
+    --font-heading: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    --font-body:    -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-body);
+    font-size: 15px;
+    line-height: 1.5;
+  }
+  h1, h2, h3 { font-family: var(--font-heading); font-weight: 700; letter-spacing: -0.01em; }
+  a { color: var(--primary); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  button {
+    font: inherit; cursor: pointer; border: 1px solid var(--border);
+    background: var(--panel); color: var(--text);
+    padding: 8px 14px; border-radius: var(--radius);
+    transition: background 80ms ease, border-color 80ms ease;
+  }
+  button:hover { border-color: var(--text); }
+  button.primary {
+    background: var(--primary); color: var(--primary-text); border-color: var(--primary);
+  }
+  button.primary:hover { filter: brightness(0.92); }
+  button.ghost { background: transparent; border-color: transparent; color: var(--muted); padding: 4px 8px; }
+  button.ghost:hover { color: var(--text); }
+  input, textarea {
+    font: inherit; color: var(--text); background: var(--panel);
+    border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 10px 12px; width: 100%;
+  }
+  textarea { resize: vertical; min-height: 80px; }
+  input:focus, textarea:focus { outline: none; border-color: var(--primary); }
+
+  /* ----------- Header ----------- */
+  header.site {
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+    padding: 20px 28px;
+    display: flex; align-items: center; gap: 16px;
+  }
+  .site .logo { height: 32px; width: auto; }
+  .site .title { flex: 1; min-width: 0; }
+  .site h1 { font-size: 20px; margin: 0; }
+  .site .meta { color: var(--muted); font-size: 13px; margin-top: 2px; }
+
+  /* ----------- Hero (optional) ----------- */
+  .hero {
+    width: 100%;
+    height: 200px;
+    background: #ddd center/cover no-repeat;
+    border-bottom: 1px solid var(--border);
+  }
+
+  /* ----------- Main layout ----------- */
+  main {
+    max-width: 1400px; margin: 0 auto; padding: 24px 28px 60px;
+    display: grid; grid-template-columns: 1fr; gap: 24px;
+  }
+  main.split { grid-template-columns: 1.4fr 1fr; }
+  @media (max-width: 900px) {
+    main.split { grid-template-columns: 1fr; }
+  }
+  section.sessions, section.agenda-panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+  }
+
+  /* ----------- Search + filters ----------- */
+  .search-block {
+    margin-bottom: 18px;
+    padding-bottom: 18px;
+    border-bottom: 1px dashed var(--border);
+  }
+  .search-block label {
+    display: block; font-weight: 600; margin-bottom: 6px; font-size: 14px;
+  }
+  .search-block .hint { color: var(--muted); font-size: 13px; margin-bottom: 8px; }
+  .search-row { display: flex; gap: 8px; }
+  .search-row textarea { flex: 1; }
+  .search-row .col { display: flex; flex-direction: column; gap: 6px; }
+
+  .filter-groups { display: flex; flex-direction: column; gap: 10px; margin-bottom: 18px; }
+  .filter-group .label {
+    font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em;
+    color: var(--muted); margin-bottom: 4px;
+  }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip {
+    font-size: 13px; padding: 4px 10px; border-radius: 999px;
+    border: 1px solid var(--border); background: var(--panel); color: var(--text);
+    cursor: pointer; user-select: none;
+  }
+  .chip:hover { border-color: var(--text); }
+  .chip.active {
+    background: var(--primary); color: var(--primary-text); border-color: var(--primary);
+  }
+  .chip .count { opacity: 0.7; margin-left: 4px; font-size: 11px; }
+
+  /* ----------- Session cards ----------- */
+  .session-list { display: flex; flex-direction: column; gap: 12px; }
+  .session-card {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    position: relative;
+    background: var(--panel);
+  }
+  .session-card .ribbon {
+    position: absolute; top: 10px; right: 10px;
+    font-size: 11px; font-weight: 600; letter-spacing: 0.02em;
+    padding: 3px 8px; border-radius: 999px;
+  }
+  .ribbon.great { background: var(--great); color: white; }
+  .ribbon.good  { background: var(--good);  color: white; }
+
+  .session-card h3 { margin: 0 0 4px 0; font-size: 16px; padding-right: 90px; }
+  .session-card .time { color: var(--muted); font-size: 13px; margin-bottom: 6px; }
+  .session-card .speakers { font-size: 14px; margin-bottom: 8px; }
+  .session-card .abstract { font-size: 14px; color: #333; margin-bottom: 10px; }
+  .session-card .tags { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 10px; }
+  .tag-pill {
+    font-size: 11px; padding: 2px 8px; border-radius: 999px;
+    background: var(--bg); color: var(--muted); border: 1px solid var(--border);
+  }
+  .session-card .actions { display: flex; justify-content: flex-end; gap: 8px; }
+  .session-card .reason {
+    font-size: 13px; color: var(--muted); font-style: italic; margin-bottom: 8px;
+    border-left: 2px solid var(--accent); padding-left: 8px;
+  }
+  .session-card.in-agenda {
+    opacity: 0.6;
+  }
+  .session-card.in-agenda::after {
+    content: "Added";
+    position: absolute; bottom: 12px; right: 16px;
+    font-size: 11px; color: var(--muted);
+  }
+
+  /* ----------- Agenda panel ----------- */
+  .agenda-panel h2 { margin: 0 0 4px 0; font-size: 18px; }
+  .agenda-panel .for-input { margin: 10px 0 16px; }
+  .agenda-items { display: flex; flex-direction: column; gap: 10px; }
+  .agenda-item {
+    border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 10px 12px; position: relative;
+  }
+  .agenda-item .ai-time { color: var(--muted); font-size: 12px; }
+  .agenda-item .ai-title { font-weight: 600; font-size: 14px; margin-top: 2px; }
+  .agenda-item .ai-room { color: var(--muted); font-size: 12px; margin-top: 2px; }
+  .agenda-item .ai-remove {
+    position: absolute; top: 8px; right: 8px;
+    background: none; border: none; color: var(--muted); cursor: pointer; font-size: 16px;
+    padding: 2px 6px;
+  }
+  .agenda-item.conflict { border-color: var(--good); background: #fff8e6; }
+  .agenda-item.conflict .ai-room::after {
+    content: " · conflicts with another pick";
+    color: var(--good); font-weight: 600;
+  }
+  .agenda-actions { margin-top: 16px; display: flex; gap: 8px; flex-wrap: wrap; }
+  .empty-agenda {
+    color: var(--muted); font-size: 14px; text-align: center; padding: 24px 12px;
+    border: 1px dashed var(--border); border-radius: var(--radius);
+  }
+
+  /* ----------- Personalized view mode ----------- */
+  body.personalized main { grid-template-columns: 1fr; max-width: 760px; }
+  body.personalized section.sessions { display: none; }
+  body.personalized section.agenda-panel { padding: 28px; }
+  body.personalized .for-banner {
+    background: var(--bg); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 12px 16px; margin-bottom: 16px;
+  }
+  body.personalized .for-banner .for-label {
+    font-size: 12px; text-transform: uppercase; color: var(--muted); letter-spacing: 0.04em;
+  }
+  body.personalized .for-banner .for-name { font-size: 18px; font-weight: 700; }
+  body.personalized .for-banner .for-note { margin-top: 6px; color: #333; font-size: 14px; }
+  body.personalized .build-own {
+    margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--border);
+    text-align: center;
+  }
+
+  /* ----------- Toast ----------- */
+  .toast {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+    background: var(--text); color: var(--panel);
+    padding: 10px 16px; border-radius: var(--radius); font-size: 14px;
+    opacity: 0; pointer-events: none;
+    transition: opacity 200ms ease, transform 200ms ease;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(-4px); }
+
+  .muted-label { color: var(--muted); font-size: 13px; }
+  .empty-state { padding: 40px; text-align: center; color: var(--muted); }
+</style>
+</head>
+<body>
+
+<script id="agenda-data" type="application/json">{{DATA}}</script>
+
+<header class="site">
+  <img class="logo" id="brand-logo" alt="" style="display:none" />
+  <div class="title">
+    <h1 id="event-name">Conference</h1>
+    <div class="meta" id="event-meta"></div>
+  </div>
+  <button class="ghost" id="reset-view" style="display:none">Reset view</button>
+</header>
+
+<div class="hero" id="hero" style="display:none"></div>
+
+<main id="layout">
+  <section class="sessions" id="sessions-section">
+    <div class="search-block">
+      <label for="nl">Who are you building this agenda for?</label>
+      <div class="hint">Describe their role, seniority, interests, and what they want to take away. The page will tag sessions <strong>Great fit</strong> or <strong>Good fit</strong> and sort by fit.</div>
+      <div class="search-row">
+        <textarea id="nl" placeholder="e.g., A CISO at a Fortune 100 financial services company. Cares about supply-chain risk, platform controls, and bringing back tactical playbooks for their security architects."></textarea>
+        <div class="col">
+          <button class="primary" id="find-fit">Find fit</button>
+          <button class="ghost" id="clear-fit">Clear</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="filter-groups" id="filter-groups"></div>
+
+    <div class="muted-label" id="result-count"></div>
+    <div class="session-list" id="session-list"></div>
+  </section>
+
+  <section class="agenda-panel" id="agenda-section" style="display:none">
+    <h2>Personalized agenda</h2>
+    <div class="muted-label" id="agenda-count">0 sessions</div>
+
+    <div class="for-banner" id="for-banner" style="display:none">
+      <div class="for-label">For</div>
+      <div class="for-name" id="for-name"></div>
+      <div class="for-note" id="for-note"></div>
+    </div>
+
+    <div class="for-input" id="for-input-wrap">
+      <label class="muted-label" for="for-input">Whose agenda is this? (optional)</label>
+      <input id="for-input" type="text" placeholder="e.g., Bob, CISO @ F100 Financial Services" />
+    </div>
+
+    <div id="agenda-items-wrap"></div>
+
+    <div class="agenda-actions" id="agenda-actions" style="display:none">
+      <button class="primary" id="publish">Publish personalized agenda</button>
+      <button class="ghost" id="clear-agenda">Clear all</button>
+    </div>
+
+    <div class="build-own" style="display:none" id="build-own">
+      <button id="build-own-btn">See the full agenda · Build my own</button>
+    </div>
+  </section>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function () {
+  // ---------- Load data ----------
+  const dataNode = document.getElementById('agenda-data');
+  let data;
+  try { data = JSON.parse(dataNode.textContent); }
+  catch (e) {
+    document.body.innerHTML = '<div class="empty-state">No agenda data available.</div>';
+    return;
+  }
+
+  // ---------- Apply branding ----------
+  const brand = data.brand || {};
+  const root = document.documentElement;
+  if (brand.colors) {
+    const c = brand.colors;
+    if (c.primary)      root.style.setProperty('--primary',      c.primary);
+    if (c.primary_text) root.style.setProperty('--primary-text', c.primary_text);
+    if (c.accent)       root.style.setProperty('--accent',       c.accent);
+    if (c.bg)           root.style.setProperty('--bg',           c.bg);
+    if (c.panel)        root.style.setProperty('--panel',        c.panel);
+    if (c.text)         root.style.setProperty('--text',         c.text);
+    if (c.muted)        root.style.setProperty('--muted',        c.muted);
+    if (c.border)       root.style.setProperty('--border',       c.border);
+    if (c.great_fit)    root.style.setProperty('--great',        c.great_fit);
+    if (c.good_fit)     root.style.setProperty('--good',         c.good_fit);
+  }
+  if (brand.fonts) {
+    if (brand.fonts.heading) root.style.setProperty('--font-heading', brand.fonts.heading);
+    if (brand.fonts.body)    root.style.setProperty('--font-body',    brand.fonts.body);
+  }
+  if (brand.radius) root.style.setProperty('--radius', brand.radius);
+  if (brand.logo_url) {
+    const logo = document.getElementById('brand-logo');
+    logo.src = brand.logo_url;
+    logo.style.display = '';
+    logo.alt = (data.event && data.event.name) || 'Conference';
+  }
+  if (brand.hero_image_url) {
+    const hero = document.getElementById('hero');
+    hero.style.backgroundImage = `url("${brand.hero_image_url}")`;
+    hero.style.display = '';
+  }
+
+  // ---------- Header ----------
+  const ev = data.event || {};
+  document.getElementById('event-name').textContent = ev.name || 'Conference';
+  const metaParts = [];
+  if (ev.start_date) metaParts.push(formatDateRange(ev.start_date, ev.end_date));
+  if (ev.location) metaParts.push(ev.location);
+  document.getElementById('event-meta').textContent = metaParts.join(' · ');
+  document.title = (ev.name || 'Conference') + ' — Agenda';
+
+  // ---------- State ----------
+  const sessions = Array.isArray(data.sessions) ? data.sessions : [];
+  const tagColumns = Array.isArray(data.tag_columns) ? data.tag_columns : [];
+  const fitConfig = data.fit_config || { great_threshold: 0.65, good_threshold: 0.40 };
+
+  const activeFilters = {}; // { tag_key: Set(values) }
+  tagColumns.forEach(tc => activeFilters[tc.key] = new Set());
+
+  let agendaPicks = []; // [session_id]
+  let fitMap = null;    // { session_id: { rating: 'great'|'good'|'skip', reason: string } } | null
+
+  // ---------- Personalized-view mode ----------
+  let personalizedMode = false;
+  let personalizedFor = '';
+  let personalizedNote = '';
+
+  function readUrlState() {
+    const hash = window.location.hash || '';
+    const m = hash.match(/^#a=([A-Za-z0-9_\-]+)/);
+    if (!m) return null;
+    try {
+      const decoded = atob(m[1].replace(/-/g, '+').replace(/_/g, '/'));
+      return JSON.parse(decoded);
+    } catch (e) { return null; }
+  }
+
+  function encodeUrlState(state) {
+    const json = JSON.stringify(state);
+    return btoa(unescape(encodeURIComponent(json)))
+      .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  }
+
+  // ---------- Filter rendering ----------
+  function renderFilters() {
+    const root = document.getElementById('filter-groups');
+    root.innerHTML = '';
+    for (const tc of tagColumns) {
+      const counts = {};
+      for (const s of sessions) {
+        const vals = (s.tags && s.tags[tc.key]) || [];
+        for (const v of vals) counts[v] = (counts[v] || 0) + 1;
+      }
+      const values = (tc.values && tc.values.length)
+        ? tc.values.slice()
+        : Object.keys(counts);
+      values.sort((a, b) => (counts[b] || 0) - (counts[a] || 0));
+
+      const group = document.createElement('div');
+      group.className = 'filter-group';
+      group.innerHTML = `<div class="label">${escapeHtml(tc.label || tc.key)}</div>`;
+      const chips = document.createElement('div');
+      chips.className = 'chips';
+
+      for (const v of values) {
+        const chip = document.createElement('span');
+        chip.className = 'chip';
+        chip.dataset.key = tc.key;
+        chip.dataset.value = v;
+        chip.innerHTML = `${escapeHtml(v)}<span class="count">${counts[v] || 0}</span>`;
+        chip.addEventListener('click', () => {
+          const set = activeFilters[tc.key];
+          if (set.has(v)) set.delete(v); else set.add(v);
+          chip.classList.toggle('active');
+          render();
+        });
+        chips.appendChild(chip);
+      }
+      group.appendChild(chips);
+      root.appendChild(group);
+    }
+  }
+
+  // ---------- Filtering + scoring ----------
+  function filtered() {
+    return sessions.filter(s => {
+      for (const tc of tagColumns) {
+        const set = activeFilters[tc.key];
+        if (set.size === 0) continue;
+        const sessionVals = (s.tags && s.tags[tc.key]) || [];
+        let ok = false;
+        for (const v of sessionVals) { if (set.has(v)) { ok = true; break; } }
+        if (!ok) return false;
+      }
+      return true;
+    });
+  }
+
+  function rankByFit(list) {
+    if (!fitMap) return list.slice().sort(byStart);
+    return list.slice().sort((a, b) => {
+      const ra = fitRank(fitMap[a.id]);
+      const rb = fitRank(fitMap[b.id]);
+      if (ra !== rb) return ra - rb;
+      return byStart(a, b);
+    });
+  }
+
+  function fitRank(entry) {
+    if (!entry) return 2;
+    if (entry.rating === 'great') return 0;
+    if (entry.rating === 'good')  return 1;
+    return 2;
+  }
+
+  function byStart(a, b) {
+    const sa = a.start || '';
+    const sb = b.start || '';
+    if (sa < sb) return -1; if (sa > sb) return 1; return 0;
+  }
+
+  // ---------- Render session list ----------
+  function render() {
+    if (personalizedMode) { renderPersonalized(); return; }
+    const list = rankByFit(filtered());
+    const root = document.getElementById('session-list');
+    root.innerHTML = '';
+    document.getElementById('result-count').textContent =
+      `${list.length} session${list.length === 1 ? '' : 's'}` +
+      (fitMap ? ' (sorted by fit)' : '');
+
+    if (list.length === 0) {
+      root.innerHTML = '<div class="empty-state">No sessions match the current filters.</div>';
+      return;
+    }
+
+    for (const s of list) {
+      const card = document.createElement('div');
+      card.className = 'session-card';
+      if (agendaPicks.includes(s.id)) card.classList.add('in-agenda');
+
+      const fit = fitMap && fitMap[s.id];
+      let ribbon = '';
+      if (fit && fit.rating === 'great') ribbon = '<span class="ribbon great">Great fit</span>';
+      else if (fit && fit.rating === 'good') ribbon = '<span class="ribbon good">Good fit</span>';
+
+      const tagsHtml = renderTagPills(s);
+      const reason = (fit && fit.reason)
+        ? `<div class="reason">${escapeHtml(fit.reason)}</div>` : '';
+
+      card.innerHTML = `
+        ${ribbon}
+        <h3>${escapeHtml(s.title || 'Untitled session')}</h3>
+        <div class="time">${escapeHtml(formatTime(s))}${s.room ? ' · ' + escapeHtml(s.room) : ''}</div>
+        ${s.speakers && s.speakers.length ? `<div class="speakers">${escapeHtml(s.speakers.join(', '))}</div>` : ''}
+        ${s.abstract ? `<div class="abstract">${escapeHtml(s.abstract)}</div>` : ''}
+        ${reason}
+        ${tagsHtml}
+        <div class="actions">
+          <button data-add="${escapeAttr(s.id)}">${agendaPicks.includes(s.id) ? 'Remove from agenda' : 'Add to personalized agenda'}</button>
+        </div>
+      `;
+      card.querySelector('[data-add]').addEventListener('click', () => toggleAgenda(s.id));
+      root.appendChild(card);
+    }
+  }
+
+  function renderTagPills(s) {
+    const all = [];
+    for (const tc of tagColumns) {
+      const vals = (s.tags && s.tags[tc.key]) || [];
+      for (const v of vals) all.push(v);
+    }
+    if (!all.length) return '';
+    return `<div class="tags">${all.map(v => `<span class="tag-pill">${escapeHtml(v)}</span>`).join('')}</div>`;
+  }
+
+  // ---------- Agenda panel ----------
+  function toggleAgenda(id) {
+    const i = agendaPicks.indexOf(id);
+    if (i >= 0) agendaPicks.splice(i, 1);
+    else agendaPicks.push(id);
+    renderAgenda();
+    render();
+  }
+
+  function renderAgenda() {
+    const section = document.getElementById('agenda-section');
+    const layout = document.getElementById('layout');
+    const items = agendaPicks
+      .map(id => sessions.find(s => s.id === id))
+      .filter(Boolean)
+      .sort(byStart);
+
+    if (items.length === 0 && !personalizedMode) {
+      section.style.display = 'none';
+      layout.classList.remove('split');
+      return;
+    }
+    section.style.display = '';
+    layout.classList.add('split');
+
+    document.getElementById('agenda-count').textContent =
+      `${items.length} session${items.length === 1 ? '' : 's'}`;
+
+    const conflicts = computeConflicts(items);
+    const wrap = document.getElementById('agenda-items-wrap');
+    wrap.innerHTML = '';
+
+    if (items.length === 0) {
+      wrap.innerHTML = '<div class="empty-agenda">No sessions added yet. Pick a session on the left to start building.</div>';
+    } else {
+      const list = document.createElement('div');
+      list.className = 'agenda-items';
+      for (const s of items) {
+        const el = document.createElement('div');
+        el.className = 'agenda-item' + (conflicts.has(s.id) ? ' conflict' : '');
+        el.innerHTML = `
+          <div class="ai-time">${escapeHtml(formatTime(s))}</div>
+          <div class="ai-title">${escapeHtml(s.title || 'Untitled')}</div>
+          <div class="ai-room">${escapeHtml(s.room || '')}</div>
+          ${personalizedMode ? '' : `<button class="ai-remove" data-remove="${escapeAttr(s.id)}" title="Remove">×</button>`}
+        `;
+        if (!personalizedMode) {
+          el.querySelector('[data-remove]').addEventListener('click', () => toggleAgenda(s.id));
+        }
+        list.appendChild(el);
+      }
+      wrap.appendChild(list);
+    }
+
+    document.getElementById('agenda-actions').style.display =
+      (personalizedMode || items.length === 0) ? 'none' : '';
+  }
+
+  function computeConflicts(items) {
+    const conflicting = new Set();
+    for (let i = 0; i < items.length; i++) {
+      for (let j = i + 1; j < items.length; j++) {
+        const a = items[i], b = items[j];
+        if (!a.start || !a.end || !b.start || !b.end) continue;
+        if (a.start < b.end && b.start < a.end) {
+          conflicting.add(a.id);
+          conflicting.add(b.id);
+        }
+      }
+    }
+    return conflicting;
+  }
+
+  // ---------- Publish ----------
+  function publish() {
+    const forName = (document.getElementById('for-input').value || '').trim();
+    const state = { picks: agendaPicks.slice() };
+    if (forName) state.for = forName;
+    const encoded = encodeUrlState(state);
+    const url = window.location.origin + window.location.pathname + '#a=' + encoded;
+    navigator.clipboard.writeText(url).then(
+      () => toast('Link copied to clipboard'),
+      () => toast(url)
+    );
+    window.location.hash = 'a=' + encoded;
+  }
+
+  // ---------- Fit search ----------
+  async function findFit() {
+    const description = (document.getElementById('nl').value || '').trim();
+    if (!description) { fitMap = null; render(); return; }
+
+    if (fitConfig && fitConfig.anthropic_api_key_configured && window.AGENDA_FIT_API) {
+      try {
+        const result = await window.AGENDA_FIT_API(description, sessions);
+        fitMap = {};
+        for (const entry of result) fitMap[entry.id] = { rating: entry.rating, reason: entry.reason };
+        render();
+        return;
+      } catch (e) {
+        // Fall through to keyword scoring.
+      }
+    }
+    fitMap = keywordFit(description, sessions, fitConfig);
+    render();
+  }
+
+  function clearFit() {
+    document.getElementById('nl').value = '';
+    fitMap = null;
+    render();
+  }
+
+  function keywordFit(description, sessionList, cfg) {
+    const tokens = tokenize(description);
+    if (!tokens.length) return null;
+    const out = {};
+    for (const s of sessionList) {
+      const tagBag = [];
+      if (s.tags) {
+        for (const k of Object.keys(s.tags)) {
+          for (const v of s.tags[k]) tagBag.push(...tokenize(v));
+        }
+      }
+      const titleBag    = tokenize(s.title);
+      const abstractBag = tokenize(s.abstract);
+      const speakerBag  = tokenize((s.speakers || []).join(' '));
+
+      const tagScore      = overlap(tokens, tagBag);
+      const titleScore    = overlap(tokens, titleBag);
+      const abstractScore = overlap(tokens, abstractBag.concat(speakerBag));
+
+      const fit = 0.55 * tagScore + 0.25 * titleScore + 0.20 * abstractScore;
+      let rating = 'skip';
+      if (fit >= (cfg.great_threshold || 0.65)) rating = 'great';
+      else if (fit >= (cfg.good_threshold || 0.40)) rating = 'good';
+      out[s.id] = { rating, reason: '', score: fit };
+    }
+    return out;
+  }
+
+  const STOPWORDS = new Set([
+    'the','a','an','and','or','but','of','in','on','for','to','with','at','from',
+    'is','are','was','were','be','been','being','this','that','these','those',
+    'i','you','he','she','it','we','they','my','your','his','her','our','their',
+    'who','what','where','when','why','how','as','by','about','into','very',
+    'has','have','had','do','does','did','will','would','should','could','can',
+    'them','him','some','any','more','most','other'
+  ]);
+
+  function tokenize(s) {
+    if (!s) return [];
+    return String(s).toLowerCase()
+      .replace(/[^a-z0-9\s\-]/g, ' ')
+      .split(/\s+/)
+      .filter(t => t && t.length > 1 && !STOPWORDS.has(t))
+      .map(stem);
+  }
+
+  function stem(t) {
+    if (t.length > 4 && t.endsWith('ies')) return t.slice(0, -3) + 'y';
+    if (t.length > 4 && t.endsWith('es'))  return t.slice(0, -2);
+    if (t.length > 3 && t.endsWith('s'))   return t.slice(0, -1);
+    return t;
+  }
+
+  function overlap(needle, haystack) {
+    if (!needle.length) return 0;
+    const set = new Set(haystack);
+    let hits = 0;
+    for (const t of needle) if (set.has(t)) hits++;
+    return hits / needle.length;
+  }
+
+  // ---------- Helpers ----------
+  function formatTime(s) {
+    if (!s.start) return '';
+    const start = new Date(s.start);
+    if (isNaN(start.getTime())) return s.start;
+    const end = s.end ? new Date(s.end) : null;
+    const day = start.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+    const t1  = start.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+    const t2  = (end && !isNaN(end.getTime()))
+      ? end.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
+      : '';
+    return `${day} · ${t1}${t2 ? '–' + t2 : ''}`;
+  }
+
+  function formatDateRange(startISO, endISO) {
+    if (!startISO) return '';
+    const s = new Date(startISO);
+    if (isNaN(s.getTime())) return startISO;
+    const opts = { month: 'long', day: 'numeric', year: 'numeric' };
+    if (!endISO || endISO === startISO) return s.toLocaleDateString(undefined, opts);
+    const e = new Date(endISO);
+    if (isNaN(e.getTime())) return s.toLocaleDateString(undefined, opts);
+    return s.toLocaleDateString(undefined, { month: 'long', day: 'numeric' })
+      + ' – ' + e.toLocaleDateString(undefined, opts);
+  }
+
+  function escapeHtml(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+  function escapeAttr(s) { return escapeHtml(s); }
+
+  let toastTimer = null;
+  function toast(msg) {
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => el.classList.remove('show'), 2200);
+  }
+
+  // ---------- Personalized view ----------
+  function renderPersonalized() {
+    document.body.classList.add('personalized');
+    document.getElementById('reset-view').style.display = '';
+    document.getElementById('for-input-wrap').style.display = 'none';
+    document.getElementById('agenda-actions').style.display = 'none';
+    document.getElementById('build-own').style.display = '';
+    if (personalizedFor) {
+      const banner = document.getElementById('for-banner');
+      banner.style.display = '';
+      document.getElementById('for-name').textContent = personalizedFor;
+      const noteEl = document.getElementById('for-note');
+      if (personalizedNote) {
+        noteEl.textContent = personalizedNote;
+        noteEl.style.display = '';
+      } else {
+        noteEl.style.display = 'none';
+      }
+    }
+    document.getElementById('agenda-section').style.display = '';
+    document.getElementById('layout').classList.remove('split');
+    renderAgenda();
+  }
+
+  function exitPersonalized() {
+    personalizedMode = false;
+    personalizedFor = '';
+    personalizedNote = '';
+    document.body.classList.remove('personalized');
+    document.getElementById('reset-view').style.display = 'none';
+    document.getElementById('for-banner').style.display = 'none';
+    document.getElementById('for-input-wrap').style.display = '';
+    document.getElementById('build-own').style.display = 'none';
+    if (window.location.hash) {
+      history.replaceState(null, '', window.location.pathname);
+    }
+    agendaPicks = [];
+    renderAgenda();
+    render();
+  }
+
+  // ---------- Init ----------
+  document.getElementById('find-fit').addEventListener('click', findFit);
+  document.getElementById('clear-fit').addEventListener('click', clearFit);
+  document.getElementById('publish').addEventListener('click', publish);
+  document.getElementById('clear-agenda').addEventListener('click', () => {
+    if (!confirm('Clear all picks?')) return;
+    agendaPicks = []; renderAgenda(); render();
+  });
+  document.getElementById('build-own-btn').addEventListener('click', exitPersonalized);
+  document.getElementById('reset-view').addEventListener('click', exitPersonalized);
+  document.getElementById('nl').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); findFit(); }
+  });
+
+  const urlState = readUrlState();
+  if (urlState && Array.isArray(urlState.picks)) {
+    agendaPicks = urlState.picks.filter(id => sessions.some(s => s.id === id));
+    if (urlState.for)  personalizedFor  = urlState.for;
+    if (urlState.note) personalizedNote = urlState.note;
+    personalizedMode = true;
+  }
+
+  // Initial render
+  if (data.preset_picks && Array.isArray(data.preset_picks) && data.preset_picks.length) {
+    agendaPicks = data.preset_picks.filter(id => sessions.some(s => s.id === id));
+  }
+  if (data.preset_for)  personalizedFor  = data.preset_for;
+  if (data.preset_note) personalizedNote = data.preset_note;
+  if (data.preset_personalized_mode) personalizedMode = true;
+
+  renderFilters();
+  if (personalizedMode) renderPersonalized();
+  else { renderAgenda(); render(); }
+})();
+</script>
+</body>
+</html>

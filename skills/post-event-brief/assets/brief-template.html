@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Post-Event Brief</title>
+<style>
+  :root {
+    --bg: #f6f8fa;
+    --panel: #ffffff;
+    --panel-2: #f0f3f6;
+    --border: #d0d7de;
+    --text: #1f2328;
+    --muted: #57606a;
+    --accent: #0969da;
+    --good: #1a7f37;
+    --warn: #9a6700;
+    --bad: #cf222e;
+    --sf: #00a1e0;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 14px;
+    line-height: 1.5;
+  }
+  header {
+    padding: 24px 32px;
+    border-bottom: 1px solid var(--border);
+    background: var(--panel);
+  }
+  h1 {
+    margin: 0 0 6px 0;
+    font-size: 22px;
+    font-weight: 600;
+  }
+  h2 {
+    margin: 0 0 12px 0;
+    font-size: 15px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--muted);
+  }
+  h3 {
+    margin: 18px 0 8px 0;
+    font-size: 14px;
+    font-weight: 600;
+  }
+  .meta {
+    color: var(--muted);
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .meta-date { color: var(--text); font-weight: 600; }
+  .meta-sep { color: var(--border); }
+  .intent {
+    margin-top: 10px;
+    padding: 10px 14px;
+    background: var(--panel-2);
+    border-left: 3px solid var(--accent);
+    border-radius: 4px;
+    font-size: 13px;
+    color: var(--muted);
+    font-style: italic;
+  }
+  .kpis {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 12px;
+    padding: 20px 32px;
+    background: var(--panel-2);
+    border-bottom: 1px solid var(--border);
+  }
+  .kpi {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 16px;
+    position: relative;
+  }
+  .kpi-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--muted);
+    font-weight: 600;
+  }
+  .kpi-value {
+    margin-top: 6px;
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--text);
+  }
+  .kpi-badge {
+    position: absolute;
+    top: 10px;
+    right: 12px;
+    font-size: 10px;
+    background: var(--sf);
+    color: white;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+  }
+  main { padding: 24px 32px; max-width: 1200px; }
+  section { margin-bottom: 36px; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  thead {
+    background: var(--panel-2);
+    border-bottom: 1px solid var(--border);
+  }
+  th, td {
+    padding: 10px 14px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+  }
+  tbody tr:last-child td { border-bottom: 0; }
+  tbody tr:hover { background: var(--panel-2); }
+  th {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--muted);
+    font-weight: 600;
+  }
+  .num { text-align: right; font-variant-numeric: tabular-nums; }
+  .summary-text {
+    font-size: 15px;
+    line-height: 1.6;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 16px 20px;
+  }
+  .pipeline-bar {
+    display: flex;
+    height: 28px;
+    border-radius: 6px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    margin: 12px 0 16px;
+  }
+  .pipeline-bar > div {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .pipeline-bar .pre { background: var(--accent); }
+  .pipeline-bar .new { background: var(--good); }
+  .pipeline-legend {
+    display: flex;
+    gap: 18px;
+    font-size: 12px;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+  .pipeline-legend .swatch {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 2px;
+    margin-right: 6px;
+    vertical-align: middle;
+  }
+  .quote {
+    background: var(--panel);
+    border-left: 3px solid var(--accent);
+    padding: 12px 18px;
+    margin: 10px 0;
+    border-radius: 4px;
+    font-style: italic;
+    color: var(--text);
+  }
+  .quote .attribution {
+    display: block;
+    margin-top: 6px;
+    font-style: normal;
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .highlight {
+    padding: 8px 0;
+    border-bottom: 1px dashed var(--border);
+  }
+  .highlight:last-child { border-bottom: 0; }
+  .followup-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    margin-bottom: 6px;
+  }
+  .followup-task { flex: 1; }
+  .followup-owner {
+    font-size: 12px;
+    background: var(--panel-2);
+    padding: 2px 8px;
+    border-radius: 999px;
+    color: var(--muted);
+  }
+  .followup-due {
+    font-size: 12px;
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+  }
+  .footnote {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 10px;
+    font-style: italic;
+  }
+  .empty {
+    color: var(--muted);
+    font-style: italic;
+    padding: 12px 0;
+  }
+  .pill {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+    background: var(--panel-2);
+    color: var(--muted);
+  }
+  .pill.pre { background: rgba(9, 105, 218, 0.12); color: var(--accent); }
+  .pill.new { background: rgba(26, 127, 55, 0.12); color: var(--good); }
+</style>
+</head>
+<body>
+<header>
+  <h1 id="event-name">—</h1>
+  <div class="meta">
+    <span class="meta-date" id="event-date">—</span>
+    <span class="meta-sep">·</span>
+    <span id="event-location">—</span>
+    <span class="meta-sep">·</span>
+    <span>owner: <span id="event-owner">—</span></span>
+    <span class="meta-sep">·</span>
+    <span>generated <span id="event-generated">—</span></span>
+  </div>
+  <div class="intent" id="event-intent"></div>
+</header>
+
+<div class="kpis" id="kpis"></div>
+
+<main>
+  <section id="section-summary">
+    <h2>Executive summary</h2>
+    <div class="summary-text" id="summary-text">—</div>
+  </section>
+
+  <section id="section-attendance">
+    <h2>Attendance</h2>
+    <table>
+      <thead><tr><th>Metric</th><th class="num">Value</th></tr></thead>
+      <tbody id="attendance-rows"></tbody>
+    </table>
+  </section>
+
+  <section id="section-audience">
+    <h2>Audience</h2>
+    <h3>Top companies present</h3>
+    <table>
+      <thead><tr><th>Company</th><th class="num">Attendees</th></tr></thead>
+      <tbody id="audience-companies"></tbody>
+    </table>
+    <h3>By title tier</h3>
+    <table>
+      <thead><tr><th>Tier</th><th class="num">Attendees</th></tr></thead>
+      <tbody id="audience-titles"></tbody>
+    </table>
+  </section>
+
+  <section id="section-sf">
+    <h2>Salesforce signal</h2>
+    <div id="sf-campaign-line" class="footnote"></div>
+
+    <h3>Top accounts touched</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Account</th>
+          <th class="num">Contacts attending</th>
+          <th>AE owner</th>
+          <th>Tier</th>
+          <th class="num">ARR</th>
+        </tr>
+      </thead>
+      <tbody id="sf-accounts"></tbody>
+    </table>
+
+    <h3>Hot leads</h3>
+    <div class="footnote" id="sf-hotlead-rule"></div>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Company</th>
+          <th>Title</th>
+          <th>Source</th>
+          <th>Owner</th>
+          <th>Why hot</th>
+        </tr>
+      </thead>
+      <tbody id="sf-hotleads"></tbody>
+    </table>
+
+    <h3>Pipeline influenced</h3>
+    <div class="pipeline-legend">
+      <span><span class="swatch" style="background: var(--accent);"></span>Pre-existing</span>
+      <span><span class="swatch" style="background: var(--good);"></span>New since event</span>
+    </div>
+    <div class="pipeline-bar" id="pipeline-bar"></div>
+    <table>
+      <thead>
+        <tr>
+          <th>Opportunity</th>
+          <th>Account</th>
+          <th>Stage</th>
+          <th class="num">Amount</th>
+          <th>Close date</th>
+          <th>Owner</th>
+          <th>Vintage</th>
+        </tr>
+      </thead>
+      <tbody id="sf-opps"></tbody>
+    </table>
+
+    <h3>New contacts created</h3>
+    <table>
+      <thead>
+        <tr><th>Name</th><th>Company</th><th>Title</th><th>Owner</th><th>Created</th></tr>
+      </thead>
+      <tbody id="sf-newcontacts"></tbody>
+    </table>
+
+    <h3>New leads created</h3>
+    <table>
+      <thead>
+        <tr><th>Name</th><th>Company</th><th>Title</th><th>Owner</th><th>Created</th></tr>
+      </thead>
+      <tbody id="sf-newleads"></tbody>
+    </table>
+
+    <div class="footnote" id="sf-snapshot-line"></div>
+  </section>
+
+  <section id="section-highlights">
+    <h2>Highlights</h2>
+    <div id="highlights-list"></div>
+  </section>
+
+  <section id="section-followup">
+    <h2>Follow-up</h2>
+    <div id="followup-list"></div>
+  </section>
+</main>
+
+<script id="brief-data" type="application/json">{{DATA}}</script>
+<script>
+(function () {
+  const raw = document.getElementById('brief-data').textContent.trim();
+  if (!raw || raw === '{{DATA}}') return;
+  const data = JSON.parse(raw);
+
+  const $ = (id) => document.getElementById(id);
+  const text = (id, v) => { const el = $(id); if (el) el.textContent = v == null || v === '' ? '—' : v; };
+  const hide = (id) => { const el = $(id); if (el) el.style.display = 'none'; };
+  const fmtMoney = (n) => {
+    if (n == null) return '—';
+    if (n >= 1e6) return '$' + (n / 1e6).toFixed(2) + 'M';
+    if (n >= 1e3) return '$' + (n / 1e3).toFixed(0) + 'K';
+    return '$' + n.toLocaleString();
+  };
+
+  // Header
+  text('event-name', data.event?.name);
+  text('event-date', data.event?.date);
+  text('event-location', data.event?.location);
+  text('event-owner', data.event?.owner);
+  text('event-generated', data.event?.generated_at);
+  if (data.event?.intent) {
+    $('event-intent').textContent = '“' + data.event.intent + '”';
+  } else {
+    hide('event-intent');
+  }
+
+  // KPIs
+  const kpisEl = $('kpis');
+  (data.kpis || []).forEach((k) => {
+    const el = document.createElement('div');
+    el.className = 'kpi';
+    el.innerHTML = `
+      <div class="kpi-label">${k.label}</div>
+      <div class="kpi-value">${k.value}</div>
+      ${k.sf ? '<div class="kpi-badge">SF</div>' : ''}
+    `;
+    kpisEl.appendChild(el);
+  });
+
+  // Executive summary
+  if (data.executive_summary) {
+    $('summary-text').textContent = data.executive_summary;
+  } else {
+    hide('section-summary');
+  }
+
+  // Attendance
+  const att = data.attendance || {};
+  const attRows = $('attendance-rows');
+  const attEntries = [
+    ['Registered', att.registered],
+    ['Attended', att.attended],
+    ['Show rate', att.show_rate != null ? (att.show_rate * 100).toFixed(0) + '%' : null],
+    ['No-shows', att.no_shows],
+    ['Walk-ins', att.walkins],
+  ].filter(([, v]) => v != null && v !== 0 || ['Registered', 'Attended', 'Show rate'].includes(arguments));
+  attEntries.forEach(([label, value]) => {
+    if (value == null) return;
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${label}</td><td class="num">${value}</td>`;
+    attRows.appendChild(tr);
+  });
+
+  // Audience
+  const aud = data.audience || {};
+  const renderTable = (tbodyId, rows, mapFn) => {
+    const tbody = $(tbodyId);
+    if (!tbody) return;
+    if (!rows || rows.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="10" class="empty">No data</td></tr>';
+      return;
+    }
+    rows.forEach((r) => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = mapFn(r);
+      tbody.appendChild(tr);
+    });
+  };
+  renderTable('audience-companies', aud.top_companies, (r) => `<td>${r.name}</td><td class="num">${r.count}</td>`);
+  renderTable('audience-titles', aud.by_title_tier, (r) => `<td>${r.tier}</td><td class="num">${r.count}</td>`);
+
+  // Salesforce
+  const sf = data.salesforce || {};
+  if (!sf.enabled) {
+    hide('section-sf');
+  } else {
+    if (sf.campaign?.name) {
+      $('sf-campaign-line').textContent = `Campaign: ${sf.campaign.name}${sf.campaign.id ? ' (' + sf.campaign.id + ')' : ''}`;
+    }
+    if (sf.hot_lead_rule) {
+      $('sf-hotlead-rule').textContent = 'Rule: ' + sf.hot_lead_rule;
+    }
+    if (sf.snapshot_at) {
+      $('sf-snapshot-line').textContent = 'Salesforce snapshot pulled at ' + sf.snapshot_at;
+    }
+
+    renderTable('sf-accounts', sf.top_accounts, (r) => `
+      <td>${r.name}</td>
+      <td class="num">${r.contacts_attending}</td>
+      <td>${r.ae_owner || '—'}</td>
+      <td>${r.tier || '—'}</td>
+      <td class="num">${r.arr != null ? fmtMoney(r.arr) : '—'}</td>
+    `);
+    renderTable('sf-hotleads', sf.hot_leads, (r) => `
+      <td>${r.name}</td>
+      <td>${r.company || '—'}</td>
+      <td>${r.title || '—'}</td>
+      <td>${r.source || '—'}</td>
+      <td>${r.owner || '—'}</td>
+      <td>${r.why_hot || '—'}</td>
+    `);
+
+    // Pipeline bar
+    const p = sf.pipeline || {};
+    const bar = $('pipeline-bar');
+    const total = (p.preexisting || 0) + (p.new || 0);
+    if (total > 0) {
+      const preW = ((p.preexisting || 0) / total) * 100;
+      const newW = ((p.new || 0) / total) * 100;
+      bar.innerHTML = `
+        ${preW > 0 ? `<div class="pre" style="width:${preW}%">${fmtMoney(p.preexisting)}</div>` : ''}
+        ${newW > 0 ? `<div class="new" style="width:${newW}%">${fmtMoney(p.new)}</div>` : ''}
+      `;
+    } else {
+      bar.style.display = 'none';
+    }
+    renderTable('sf-opps', p.opps, (r) => `
+      <td>${r.name}</td>
+      <td>${r.account || '—'}</td>
+      <td>${r.stage || '—'}</td>
+      <td class="num">${fmtMoney(r.amount)}</td>
+      <td>${r.close_date || '—'}</td>
+      <td>${r.owner || '—'}</td>
+      <td><span class="pill ${r.pre_existing ? 'pre' : 'new'}">${r.pre_existing ? 'Pre-existing' : 'New'}</span></td>
+    `);
+
+    renderTable('sf-newcontacts', sf.new_contacts, (r) => `
+      <td>${r.name}</td>
+      <td>${r.company || '—'}</td>
+      <td>${r.title || '—'}</td>
+      <td>${r.owner || '—'}</td>
+      <td>${r.created || '—'}</td>
+    `);
+    renderTable('sf-newleads', sf.new_leads, (r) => `
+      <td>${r.name}</td>
+      <td>${r.company || '—'}</td>
+      <td>${r.title || '—'}</td>
+      <td>${r.owner || '—'}</td>
+      <td>${r.created || '—'}</td>
+    `);
+  }
+
+  // Highlights
+  const hl = $('highlights-list');
+  const highlights = data.highlights || [];
+  if (highlights.length === 0) {
+    hide('section-highlights');
+  } else {
+    highlights.forEach((h) => {
+      const el = document.createElement('div');
+      if (h.type === 'quote') {
+        el.className = 'quote';
+        el.innerHTML = `“${h.text}”<span class="attribution">— ${h.person || 'anon'}</span>`;
+      } else {
+        el.className = 'highlight';
+        el.textContent = h.text;
+      }
+      hl.appendChild(el);
+    });
+  }
+
+  // Follow-up
+  const fu = $('followup-list');
+  const followup = data.follow_up || [];
+  if (followup.length === 0) {
+    hide('section-followup');
+  } else {
+    followup.forEach((f) => {
+      const el = document.createElement('div');
+      el.className = 'followup-item';
+      el.innerHTML = `
+        <span class="followup-task">${f.task}</span>
+        ${f.owner ? `<span class="followup-owner">${f.owner}</span>` : ''}
+        ${f.due ? `<span class="followup-due">${f.due}</span>` : ''}
+      `;
+      fu.appendChild(el);
+    });
+  }
+})();
+</script>
+</body>
+</html>

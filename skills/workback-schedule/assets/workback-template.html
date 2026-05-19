@@ -41,6 +41,31 @@
   .meta {
     color: var(--muted);
     font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .meta-date {
+    color: var(--text);
+    font-weight: 600;
+  }
+  .meta-days {
+    display: inline-block;
+    background: rgba(9, 105, 218, 0.12);
+    color: var(--accent);
+    padding: 2px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+  }
+  .meta-days.past {
+    background: rgba(140, 149, 159, 0.18);
+    color: var(--done);
+  }
+  .meta-sep {
+    color: var(--border);
   }
   .summary {
     display: flex;
@@ -105,6 +130,15 @@
   }
   tbody tr.row-done td:nth-child(6) {
     text-decoration: line-through;
+  }
+  tbody tr.row-at-risk td {
+    background: rgba(154, 103, 0, 0.16);
+  }
+  tbody tr.row-off-track td {
+    background: rgba(207, 34, 46, 0.14);
+  }
+  tbody tr.row-overdue td {
+    background: rgba(207, 34, 46, 0.22);
   }
   td.notes-cell {
     max-width: 320px;
@@ -175,9 +209,8 @@
   .signal-pill[data-signal="overdue"] { background: rgba(207, 34, 46, 0.20); color: var(--overdue); font-weight: 700; }
   .signal-pill[data-signal="blocked"] { background: rgba(130, 80, 223, 0.14); color: var(--blocked); }
   .signal-pill[data-signal="done"] { background: rgba(140, 149, 159, 0.18); color: var(--done); text-decoration: line-through; }
-  .slip-pos { color: var(--off-track); }
-  .slip-neg { color: var(--on-track); }
-  .slip-zero { color: var(--muted); }
+  .due-overdue { color: var(--off-track); font-weight: 600; }
+  .due-done { color: var(--muted); }
   .empty {
     padding: 40px;
     text-align: center;
@@ -206,7 +239,7 @@
         <th data-sort="t_offset">T-offset</th>
         <th data-sort="target">Target</th>
         <th data-sort="projected">Projected</th>
-        <th data-sort="slip_days">Slip</th>
+        <th data-sort="days_left">Due in</th>
         <th data-sort="signal">Status</th>
         <th data-sort="name">Task</th>
         <th data-sort="owner">Owner</th>
@@ -234,12 +267,34 @@
   document.title = (event.name || 'Workback Schedule') + ' — workback';
   document.getElementById('event-name').textContent = event.name || 'Workback Schedule';
   const daysOut = event.days_remaining;
-  const daysLabel = daysOut == null ? '' : (daysOut < 0
-    ? ` (${Math.abs(daysOut)} days past event)`
-    : ` (${daysOut} days out)`);
-  document.getElementById('event-meta').textContent =
-    [event.date, event.type, event.location, event.owner ? 'owner: ' + event.owner : null]
-      .filter(Boolean).join(' · ') + daysLabel;
+  const daysText = daysOut == null ? ''
+    : daysOut < 0 ? `${Math.abs(daysOut)} days past event`
+    : daysOut === 0 ? `today`
+    : `${daysOut} days out`;
+  const middleParts = [event.type, event.location, event.owner ? 'owner: ' + event.owner : null].filter(Boolean);
+  const metaEl = document.getElementById('event-meta');
+  metaEl.innerHTML = '';
+  if (event.date) {
+    const dateEl = document.createElement('span');
+    dateEl.className = 'meta-date';
+    dateEl.textContent = event.date;
+    metaEl.appendChild(dateEl);
+  }
+  for (const part of middleParts) {
+    const sep = document.createElement('span');
+    sep.className = 'meta-sep';
+    sep.textContent = '·';
+    metaEl.appendChild(sep);
+    const span = document.createElement('span');
+    span.textContent = part;
+    metaEl.appendChild(span);
+  }
+  if (daysText) {
+    const pill = document.createElement('span');
+    pill.className = 'meta-days' + (daysOut < 0 ? ' past' : '');
+    pill.textContent = daysText;
+    metaEl.appendChild(pill);
+  }
 
   // Summary pills with filter
   const signals = ['overdue', 'off-track', 'at-risk', 'blocked', 'on-track', 'done'];
@@ -286,7 +341,7 @@
   function sortedTasks() {
     const arr = filteredTasks();
     arr.sort((a, b) => {
-      let av = a[sortKey], bv = b[sortKey];
+      let av = sortValue(a, sortKey), bv = sortValue(b, sortKey);
       if (av == null) av = '';
       if (bv == null) bv = '';
       if (av < bv) return -1 * sortDir;
@@ -294,6 +349,39 @@
       return 0;
     });
     return arr;
+  }
+
+  function sortValue(t, key) {
+    if (key === 'days_left') {
+      if (t.done) return Number.POSITIVE_INFINITY;
+      return daysLeft(t);
+    }
+    return t[key];
+  }
+
+  function daysLeft(t) {
+    if (!t.target || !event.today) return null;
+    const target = new Date(t.target + 'T00:00:00');
+    const now = new Date(event.today + 'T00:00:00');
+    return Math.round((target - now) / 86400000);
+  }
+
+  function formatDaysLeft(t) {
+    if (t.done) return { text: '—', cls: 'due-done' };
+    const d = daysLeft(t);
+    if (d == null) return { text: '', cls: '' };
+    if (d < 0) {
+      const n = Math.abs(d);
+      return { text: `${n} day${n === 1 ? '' : 's'} late`, cls: 'due-overdue' };
+    }
+    if (d === 0) return { text: 'today', cls: '' };
+    if (d < 7) return { text: `${d} day${d === 1 ? '' : 's'}`, cls: '' };
+    const weeks = Math.floor(d / 7);
+    const days = d % 7;
+    const wPart = `${weeks} week${weeks === 1 ? '' : 's'}`;
+    if (days === 0) return { text: wPart, cls: '' };
+    const dPart = `${days} day${days === 1 ? '' : 's'}`;
+    return { text: `${wPart} ${dPart}`, cls: '' };
   }
 
   function renderSummaryActive() {
@@ -353,9 +441,10 @@
       const t = visible[i];
       const tr = document.createElement('tr');
       if (t.done) tr.className = 'row-done';
-      const slip = t.slip_days || 0;
-      const slipCls = slip > 0 ? 'slip-pos' : slip < 0 ? 'slip-neg' : 'slip-zero';
-      const slipText = slip > 0 ? `+${slip}d` : slip < 0 ? `${slip}d` : '0';
+      else if (t.signal === 'overdue') tr.className = 'row-overdue';
+      else if (t.signal === 'off-track') tr.className = 'row-off-track';
+      else if (t.signal === 'at-risk') tr.className = 'row-at-risk';
+      const due = formatDaysLeft(t);
       const projOrActual = t.done ? (t.actual || '—') : (t.projected || '—');
       const log = Array.isArray(t.log) ? t.log : [];
       const latest = log.length ? log[log.length - 1] : null;
@@ -368,7 +457,7 @@
         <td>T-${t.t_offset}</td>
         <td>${escapeHtml(t.target || '')}</td>
         <td>${escapeHtml(projOrActual)}</td>
-        <td class="${slipCls}">${slipText}</td>
+        <td class="${due.cls}">${escapeHtml(due.text)}</td>
         <td class="signal-cell"><span class="signal-pill" data-signal="${t.signal}">${t.signal}</span></td>
         <td>${escapeHtml(t.name)}</td>
         <td>${escapeHtml(t.owner || '')}</td>
