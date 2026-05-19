@@ -1,0 +1,14 @@
+{
+  "name": "zuddl-event-marketing",
+  "owner": {
+    "name": "Zuddl",
+    "url": "https://zuddl.com"
+  },
+  "plugins": [
+    {
+      "name": "event-marketing",
+      "source": "./",
+      "description": "Skills for B2B event marketers — venue and experience research, agenda generation, workback schedules, budget tracking, sponsor/speaker research, LinkedIn promo cards, post-event briefs, and attendee chatbots."
+    }
+  ]
+}
